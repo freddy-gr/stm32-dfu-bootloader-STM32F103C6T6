@@ -5,19 +5,19 @@ GIT_VERSION := $(shell git describe --abbrev=8 --dirty --always --tags)
 
 # Config bits
 BOOTLOADER_SIZE = 4
-FLASH_SIZE = 128
+FLASH_SIZE = 32
 FLASH_BASE_ADDR = 0x08000000
 FLASH_BOOTLDR_PAYLOAD_SIZE_KB = $(shell echo $$(($(FLASH_SIZE) - $(BOOTLOADER_SIZE))))
 
 # Default config
-CONFIG ?= -DWINUSB_SUPPORT -DENABLE_CHECKSUM -DENABLE_WATCHDOG=20
-# For GPIO DFU booting:  -DENABLE_GPIO_DFU_BOOT -DGPIO_DFU_BOOT_PORT=GPIOB -DGPIO_DFU_BOOT_PIN=2
+CONFIG ?= -DWINUSB_SUPPORT -DENABLE_GPIO_DFU_BOOT -DGPIO_DFU_BOOT_PORT=GPIOA -DGPIO_DFU_BOOT_PIN=5 -DENABLE_WRITEPROT
+# For GPIO DFU booting: -DENABLE_CHECKSUM -DENABLE_GPIO_DFU_BOOT -DGPIO_DFU_BOOT_PORT=GPIOB -DGPIO_DFU_BOOT_PIN=2
 # To protect bootloader from accidental writes: -DENABLE_WRITEPROT
 # To protect your payload from DFU reads: -DENABLE_SAFEWRITE
 
 # Can be overriden with custom VID/PID
-USB_VID ?= 0xdead
-USB_PID ?= 0xca5d
+USB_VID ?= 0x0483
+USB_PID ?= 0xDF11
 
 CFLAGS = -Os -ggdb -std=c11 -Wall -pedantic -Werror \
 	-ffunction-sections -fdata-sections -Wno-overlength-strings \

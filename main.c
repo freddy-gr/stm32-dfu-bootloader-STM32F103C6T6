@@ -49,8 +49,8 @@ static char serial_no[25];
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 const char * const _usb_strings[5] = {
-	"davidgf.net (libopencm3 based)", // iManufacturer
-	"DFU bootloader [" VERSION "]", // iProduct
+	"Fury's", // iManufacturer
+	"Fury's PSU - DFU", // iProduct
 	serial_no, // iSerialNumber
 	// Interface desc string
 	/* This string is used by ST Microelectronics' DfuSe utility. */
@@ -64,16 +64,16 @@ const char * const _usb_strings[5] = {
 	"WtDg[" STR(ENABLE_WATCHDOG) "s] "
 	#endif
 	#ifdef ENABLE_SAFEWRITE
-	"SafeWr "
+	"Safe Write "
 	#endif
 	#ifdef ENABLE_WRITEPROT
-	"ROboot "
+	"Bootloader Write Protected "
 	#endif
 	#ifdef ENABLE_PROTECTIONS
-	"RDO/DBG ROboot "
+	"RDO/DBG Read Only "
 	#endif
 	#ifdef ENABLE_CHECKSUM
-	"FW-CRC "
+	"Checksum enabled "
 	#endif
 };
 
@@ -118,6 +118,8 @@ static void _full_system_reset() {
 
 #define rcc_gpio_enable(gpion) \
 	RCC_APB2ENR |= (1 << (gpion + 2));
+	
+#define RCC_APB2ENR_IOPCEN (1 << 4)  // Habilita GPIOC
 
 
 static void usbdfu_getstatus_complete(struct usb_setup_data *req) {
@@ -278,6 +280,10 @@ usbdfu_control_request(struct usb_setup_data *req,
 #define GPIO_IDR(x)  *((volatile uint32_t*)(x*0x400 +  8 + 0x40010800U))
 #define GPIO_BSRR(x) *((volatile uint32_t*)(x*0x400 + 16 + 0x40010800U))
 
+#define GPIOC_CRH   (*(volatile uint32_t*)0x40011004U)
+#define GPIOC_BSRR  (*(volatile uint32_t*)0x40011010U)
+#define GPIOC_IDR   (*(volatile uint32_t*)0x40011008U)
+
 inline static void gpio_set_mode(uint32_t gpiodev, uint16_t gpion, uint8_t mode) {
 	if (gpion < 8)
 		GPIO_CRL(gpiodev) = (GPIO_CRL(gpiodev) & ~(0xf << ((gpion)<<2))) | (mode << ((gpion)<<2));
@@ -301,12 +307,12 @@ inline static void gpio_set_mode(uint32_t gpiodev, uint16_t gpion, uint8_t mode)
 int force_dfu_gpio() {
 	rcc_gpio_enable(GPIO_DFU_BOOT_PORT);
 	gpio_set_input_pp(GPIO_DFU_BOOT_PORT, GPIO_DFU_BOOT_PIN);
-	gpio_clear(GPIO_DFU_BOOT_PORT, GPIO_DFU_BOOT_PIN);
+	gpio_set(GPIO_DFU_BOOT_PORT, GPIO_DFU_BOOT_PIN);    // <-- cambia a pull-up
 	for (unsigned int i = 0; i < 512; i++)
 		__asm__("nop");
 	uint16_t val = gpio_read(GPIO_DFU_BOOT_PORT, GPIO_DFU_BOOT_PIN);
 	gpio_set_input(GPIO_DFU_BOOT_PORT, GPIO_DFU_BOOT_PIN);
-	return val != 0;
+	return val == 0;  // <-- activo en bajo (cuando el pin está a GND)
 }
 #else
 #define force_dfu_gpio()  (0)
@@ -495,6 +501,11 @@ int main(void) {
 
 	clock_setup_in_hse_8mhz_out_72mhz();
 
+	// Inicializar LED en PC13 (activo bajo)
+    RCC_APB2ENR |= RCC_APB2ENR_IOPCEN;          // Habilitar reloj para GPIOC
+    GPIOC_CRH = (GPIOC_CRH & ~(0xF << 20)) | (0x2 << 20); // PC13 como salida push-pull a 2MHz
+    GPIOC_BSRR = (1 << 13);                     // Apagar LED (activo bajo, 1 = off)
+
 	/* Disable USB peripheral as it overrides GPIO settings */
 	*USB_CNTR_REG = USB_CNTR_PWDN;
 	/*
@@ -510,9 +521,22 @@ int main(void) {
 	get_dev_unique_id(serial_no);
 	usb_init();
 
+	uint32_t blink_counter = 0;
+    uint8_t led_state = 0;
 	while (1) {
 		// Poll based approach
 		do_usb_poll();
+
+		blink_counter++;
+        if (blink_counter > 100000) { // Ajusta este valor según la velocidad
+            blink_counter = 0;
+            led_state = !led_state;
+            if (led_state) {
+                GPIOC_BSRR = (1 << 13);  // LED off (activo bajo)
+            } else {
+                GPIOC_BSRR = (1 << 29);  // LED on (bit de reset, 13+16)
+            }
+        }
 	}
 	__builtin_unreachable();
 }
