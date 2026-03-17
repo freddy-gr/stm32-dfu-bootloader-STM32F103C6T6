@@ -13,8 +13,8 @@
 #define CMD_ACCESS_FLASH_WRPR  0x02
 #define CMD_REBOOT             0xff
 #define CMD_GO_UPGRADE         0x55
-#define VENDOR_ID            0xdead
-#define PRODUCT_ID           0x10ad
+#define VENDOR_ID            0x0483
+#define PRODUCT_ID           0xDF11
 #define IFACE_NUMBER            0x0
 #define TIMEOUT_MS             5000
 #define BOOTLOADER_FW_SIZE (4*1024)

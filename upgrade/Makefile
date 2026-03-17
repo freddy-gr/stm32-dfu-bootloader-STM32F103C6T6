@@ -24,6 +24,7 @@ LDFLAGS = -lopencm3_stm32f1 -ggdb \
 	-ffunction-sections -fdata-sections \
 	-Wl,-Tstm32f103-ram.ld -nostartfiles -lnosys \
 	-L$(LIBOPENCM3)/lib/ -Wl,-gc-sections -flto \
+	-Wl,--print-memory-usage \
 	$(PLATFORM_DEFS)
 
 all:	payload.bin upgrader.bin client.exe

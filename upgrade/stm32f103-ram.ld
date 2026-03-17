@@ -21,9 +21,9 @@
 MEMORY
 {
 	/* Use up to 10KB for the program ("rom") and the rest for data. */
-	rom (rx)  : ORIGIN = 0x20000000, LENGTH = 10240
+	rom (rx)  : ORIGIN = 0x20000000, LENGTH = 5120
 	/* Reserve the last 8 bytes of RAM to save info across reboots */
-	ram (rwx) : ORIGIN = 0x20002800, LENGTH = 10240 - 8
+	ram (rwx) : ORIGIN = 0x20001400, LENGTH = 5120 - 8
 }
 
 INCLUDE cortex-m-generic.ld
